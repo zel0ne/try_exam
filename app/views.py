@@ -2,8 +2,9 @@ from PIL import Image
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import *
+
 
 def login_(request):
     if request.method == 'POST':
@@ -24,58 +25,70 @@ def login_(request):
             return redirect('login_')
     return render(request, 'login.html')
 
+
 def logout_(request):
     logout(request)
     messages.success(request, 'Вы успешно вышли!')
     return redirect('login_')
 
+
 def filter_books(request):
     """
     Фильтрация книг:
-    - поиск по названию книги или автору (ФИО)
-    - фильтр по жанру
+    - поиск по названию книги или описанию
+    - фильтр по категории
     - сортировка по цене (возрастание/убывание)
     """
     books = Book.objects.all()
+
     # Параметры из GET-запроса
     search = request.GET.get('search', '')
-    filter_genre = request.GET.get('filter', '')
+    filter_category = request.GET.get('filter', '')
     sort = request.GET.get('sort', '')
-    # ПОИСК: по названию книги ИЛИ по ФИО автора
+
+    # ПОИСК: по названию книги ИЛИ по описанию
     if search:
         books = books.filter(
             Q(name__icontains=search) |
-            Q(author__fio__icontains=search)
+            Q(description__icontains=search)
         )
-    # ФИЛЬТР ПО ЖАНРУ
-    if filter_genre:
-        books = books.filter(genre__id=filter_genre)
+
+    # ФИЛЬТР ПО КАТЕГОРИИ
+    if filter_category:
+        books = books.filter(category__id=filter_category)
+
     # СОРТИРОВКА ПО ЦЕНЕ
     if sort == 'price_asc':
         books = books.order_by('price')
     elif sort == 'price_desc':
         books = books.order_by('-price')
+
     context = {
         'books': books,
-        'genres': Genre.objects.all(),           # для выпадающего списка жанров
+        'categories': Category.objects.all(),           # для выпадающего списка категорий
         'search': search,
-        'filter': filter_genre,
+        'filter': filter_category,
         'sort': sort,
-        'bookorders': BookOrder.objects.all(),   # для страницы заказов
-        'authors': Author.objects.all(),
+        'bookorders': BookOrder.objects.all(),          # для страницы заказов
+        'suppliers': Supplier.objects.all(),
+        'manufacturers': Manufacturer.objects.all(),
         'statuses': Status.objects.all(),
+        'pvz_list': Pvz.objects.all(),
     }
     return context
+
 
 def home(request):
     """Главная страница со списком книг и фильтрацией"""
     context = filter_books(request)
     return render(request, 'home.html', context)
 
+
 def order(request):
     """Страница со списком заказов"""
     context = filter_books(request)
     return render(request, 'order.html', context)
+
 
 def add_book(request):
     """Добавление новой книги (только для админа)"""
@@ -87,18 +100,24 @@ def add_book(request):
             if img.width > 600 or img.height > 600:
                 messages.error(request, 'Изображение больше чем 600x600 пикселей!')
                 return redirect('home')
-        # Получаем или создаем автора (как в твоем коде с Producer)
-        author_name = request.POST.get('author', '')
-        author, created = Author.objects.get_or_create(fio=author_name)
-        # Получаем жанр по ID
-        genre = Genre.objects.get(id=request.POST.get('genre'))
+
+        # Получаем или создаем поставщика
+        supplier_name = request.POST.get('supplier', '')
+        supplier, created = Supplier.objects.get_or_create(name=supplier_name)
+
+        # Получаем изготовителя и категорию по ID
+        manufacturer = Manufacturer.objects.get(id=request.POST.get('manufacturer'))
+        category = Category.objects.get(id=request.POST.get('category'))
+
         # Создаем книгу
         Book.objects.create(
             article=request.POST.get('article'),
             name=request.POST.get('name'),
-            genre=genre,
-            author=author,
+            unit=request.POST.get('unit'),
             price=request.POST.get('price'),
+            category=category,
+            supplier=supplier,
+            manufacturer=manufacturer,
             discount=request.POST.get('discount'),
             description=request.POST.get('description'),
             unit_on_stock=request.POST.get('unit_on_stock'),
@@ -107,10 +126,12 @@ def add_book(request):
         messages.success(request, 'Книга успешно добавлена!')
     return redirect('home')
 
+
 def edit_book(request, id):
     """Редактирование книги"""
     if request.method == 'POST':
         book = Book.objects.get(id=id)
+
         # Обработка изображения
         image = request.FILES.get('image')
         if image:
@@ -121,25 +142,45 @@ def edit_book(request, id):
             if book.image:
                 book.image.delete()
             book.image = image
-        # Получаем или создаем автора
-        author_name = request.POST.get('author', '')
-        author, created = Author.objects.get_or_create(fio=author_name)
+
+        # Получаем или создаем поставщика
+        supplier_name = request.POST.get('supplier', '')
+        supplier, created = Supplier.objects.get_or_create(name=supplier_name)
+
+        # Получаем изготовителя и категорию по ID
+        manufacturer = Manufacturer.objects.get(id=request.POST.get('manufacturer'))
+        category = Category.objects.get(id=request.POST.get('category'))
+
         # Обновляем поля
         book.article = request.POST.get('article')
         book.name = request.POST.get('name')
-        book.genre = Genre.objects.get(id=request.POST.get('genre'))
-        book.author = author
+        book.unit = request.POST.get('unit')
         book.price = request.POST.get('price')
+        book.category = category
+        book.supplier = supplier
+        book.manufacturer = manufacturer
         book.discount = request.POST.get('discount')
         book.description = request.POST.get('description')
         book.unit_on_stock = request.POST.get('unit_on_stock')
         book.save()
+
         messages.success(request, 'Книга успешно обновлена!')
     return redirect('home')
+
+def book_detail(request, id):
+    """Детальная страница книги"""
+    book = get_object_or_404(Book, id=id)
+    context = {
+        'book': book,
+        'categories': Category.objects.all(),
+        'manufacturers': Manufacturer.objects.all(),
+    }
+    return render(request, 'detail.html', context)
 
 def delete_book(request, id):
     """Удаление книги (только если нет связанных заказов)"""
     book = Book.objects.get(id=id)
+
     # Проверяем, есть ли книга в заказах
     if BookOrder.objects.filter(book=book):
         messages.error(request, 'Книга находится в заказе! Удаление невозможно.')
@@ -150,20 +191,25 @@ def delete_book(request, id):
         messages.success(request, 'Книга успешно удалена!')
     return redirect('home')
 
+
 def add_order(request):
     """Добавление нового заказа"""
     if request.method == 'POST':
         book_id = request.POST.get('book')
         status_id = request.POST.get('status')
+        pvz_id = request.POST.get('pvz')
         amount = request.POST.get('amount')
+
         # Создаем заказ
         order = Order.objects.create(
             date_order=request.POST.get('date_order'),
             date_delivery=request.POST.get('date_delivery'),
+            pvz=Pvz.objects.get(id=pvz_id),
             client=request.user,  # текущий пользователь — клиент
             status=Status.objects.get(id=status_id),
             code=request.POST.get('code'),
         )
+
         # Связываем книгу с заказом
         BookOrder.objects.create(
             book=Book.objects.get(id=book_id),
@@ -173,23 +219,29 @@ def add_order(request):
         messages.success(request, 'Заказ успешно добавлен!')
     return redirect('order')
 
+
 def edit_order(request, id):
     """Редактирование заказа (через BookOrder)"""
     if request.method == 'POST':
         book_order = BookOrder.objects.get(id=id)
         order = book_order.order
+
         # Обновляем заказ
         order.date_order = request.POST.get('date_order')
         order.date_delivery = request.POST.get('date_delivery')
+        order.pvz = Pvz.objects.get(id=request.POST.get('pvz'))
         order.status = Status.objects.get(id=request.POST.get('status'))
         order.code = request.POST.get('code')
         order.save()
+
         # Обновляем книгу в заказе
         book_order.book = Book.objects.get(id=request.POST.get('book'))
         book_order.amount = request.POST.get('amount')
         book_order.save()
+
         messages.success(request, 'Заказ успешно обновлен!')
     return redirect('order')
+
 
 def delete_order(request, id):
     """Удаление заказа"""

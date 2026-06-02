@@ -4,21 +4,29 @@ from django.contrib.auth.models import AbstractUser
 class CustomUser(AbstractUser):
     fio = models.CharField()
 
-class Genre(models.Model):
+class Category(models.Model):
     name = models.CharField(max_length=50)
 
 class Status(models.Model):
     name = models.CharField(max_length=50)
 
-class Author(models.Model):
-    fio = models.CharField(max_length=100)
+class Pvz(models.Model):
+    address = models.CharField(max_length=100)
+
+class Supplier(models.Model):
+    name = models.CharField(max_length=100)
+
+class Manufacturer(models.Model):
+    name = models.CharField(max_length=100)
 
 class Book(models.Model):
     article = models.CharField(max_length=6)
     name = models.CharField(max_length=50)
-    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    unit = models.CharField(max_length=10)
     price = models.DecimalField(decimal_places=2, max_digits = 10)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.CASCADE)
     discount = models.DecimalField(decimal_places=2, max_digits = 10)
     description = models.CharField(max_length=100)
     unit_on_stock = models.DecimalField(decimal_places=2, max_digits = 10)
@@ -32,6 +40,7 @@ class Book(models.Model):
 class Order(models.Model):
     date_order = models.DateField()
     date_delivery = models.DateField()
+    pvz = models.ForeignKey(Pvz, on_delete=models.CASCADE, default='')
     client = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, on_delete=models.CASCADE)
     code = models.IntegerField()
@@ -40,6 +49,5 @@ class BookOrder(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     amount = models.IntegerField()
-
 
 

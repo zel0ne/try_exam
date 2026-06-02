@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  .detail-container {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 20px;
+  }
+  .detail-card {
+      display: flex;
+      gap: 30px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 20px;
+  }
+  .detail-image {
+      width: 250px;
+      height: 250px;
+      object-fit: cover;
+      border-radius: 5px;
+  }
+  .detail-info {
+      margin-bottom: 10px;
+  }
+
+</style>
+
+<div class="detail-container">
+  <div class="detail-card">
+    <div>
+      {% if book.image %}
+      <img class="detail-image" src="{{ book.image.url }}">
+      {% else %}
+      <img class="detail-image" src="/media/books/picture.png">
+      {% endif %}
+    </div>
+    <div style="flex: 1;">
+      <h2>{{ book.name }}</h2>
+      <div class="detail-info"><span>Артикль:</span> {{ book.article }}</div>
+      <div class="detail-info"><span>Категория:</span> {{ book.category.name }}</div>
+      <div class="detail-info"><span>Поставщик:</span> {{ book.supplier.name }}</div>
+      <div class="detail-info"><span>Изготовитель:</span> {{ book.manufacturer.name }}</div>
+      <div class="detail-info"><span>Описание:</span> {{ book.description }}</div>
+      <div class="detail-info"><span>Единица измерения:</span> {{ book.unit }}</div>
+      <div class="detail-info"><span>На складе:</span> {{ book.unit_on_stock }} {{ book.unit }}</div>
+      <div class="detail-info">
+        <span>Цена:</span>
+        {% if book.discount > 0 %}
+        <s style="color: red">{{ book.price }} ₽</s>
+        <strong> {{ book.calculate_discount|floatformat:2 }} ₽</strong>
+        <span>(скидка {{ book.discount }}%)</span>
+        {% else %}
+        <span>{{ book.price }} ₽</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <a href="{% url 'home' %}">Назад</a>
+</div>
+{% endblock %}

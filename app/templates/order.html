@@ -49,7 +49,8 @@
     <div class="card" onclick="document.getElementById('modal_edit_{{ bookorder.id }}').style.display='flex'">
         <div class="left3">
             <div><strong>Книга:</strong> {{ bookorder.book.name }}</div>
-            <div><strong>Автор:</strong> {{ bookorder.book.author.fio }}</div>
+            <div><strong>Клиент:</strong> {{ bookorder.order.client.fio }}</div>
+            <div><strong>ПВЗ:</strong> {{ bookorder.order.pvz.address }}</div>
             <div><strong>Количество:</strong> {{ bookorder.amount }} шт.</div>
             <div><strong>Статус:</strong> {{ bookorder.order.status.name }}</div>
             <div><strong>Код заказа:</strong> {{ bookorder.order.code }}</div>
@@ -75,12 +76,20 @@
                 <select name="book">
                     {% for book in books %}
                     <option value="{{ book.id }}" {% if bookorder.book.id == book.id %}selected{% endif %}>
-                        {{ book.name }} ({{ book.author.fio }})
+                        {{ book.name }}
                     </option>
                     {% endfor %}
                 </select>
 
                 <input value="{{ bookorder.amount }}" name="amount" type="number" min="1" required placeholder="Количество">
+
+                <select name="pvz">
+                    {% for pvz in pvz_list %}
+                    <option value="{{ pvz.id }}" {% if bookorder.order.pvz.id == pvz.id %}selected{% endif %}>
+                        {{ pvz.address }}
+                    </option>
+                    {% endfor %}
+                </select>
 
                 <select name="status">
                     {% for status in statuses %}
@@ -114,11 +123,18 @@
             <select name="book" required>
                 <option value="">Выберите книгу</option>
                 {% for book in books %}
-                <option value="{{ book.id }}">{{ book.name }} ({{ book.author.fio }}) — {{ book.price }} ₽</option>
+                <option value="{{ book.id }}">{{ book.name }} — {{ book.price }} ₽</option>
                 {% endfor %}
             </select>
 
             <input name="amount" type="number" min="1" required placeholder="Количество">
+
+            <select name="pvz" required>
+                <option value="">Выберите ПВЗ</option>
+                {% for pvz in pvz_list %}
+                <option value="{{ pvz.id }}">{{ pvz.address }}</option>
+                {% endfor %}
+            </select>
 
             <select name="status" required>
                 <option value="">Выберите статус</option>
