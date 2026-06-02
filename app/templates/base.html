@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Каталог</title>
+    <link rel="stylesheet" href="{% static 'Icon.ico' %}">
+</head>
+<style>
+    h1,h2,div,a,buttom {
+        font-family: "Times New Roman" !important
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #7FFF00;
+        padding: 0 20px;
+    }
+    .left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .notifications {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        z-index: 999;
+        width: 300px;
+    }
+    .notif {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .notif p {
+        margin: 0;
+    }
+</style>
+<body>
+<div class="nav">
+    <div class="left">
+        <img src="{% static 'Icon.ico' %}" height="60" width="60">
+        <div>"Книги"</div>
+    </div>
+    <div class="right">
+        <a href="{% url 'home' %}">Главная</a>
+        <a href="{% url 'order' %}">Заказы</a>
+        {% if user.is_authenticated %}
+        <a href="{% url 'logout_' %}" style="color: red;">Выйти ({{ user.fio }} [{{ user.groups.first.name }}])</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if messages %}
+<div class="notifications">
+    {% for message in messages %}
+    <div class="notif" {% if message.tags == 'success' %}style="background: green"
+    {% elif message.tags == 'error' %}style="background: red"
+    {% elif message.tags == 'warning' %}style="background: orange"
+    {% else %}style="background: #2196F3"
+    {% endif %}>
+    <p>
+        {% if message.tags == 'success' %} Успех
+        {% elif message.tags == 'error' %} Отказ
+        {% elif message.tags == 'warning' %} Ошибка
+        {% else %}ℹ
+        {% endif %}
+        {{ message|escapejs }}
+    </p>
+</div>
+{% endfor %}
+</div>
+<script>
+    document.querySelectorAll('.notif').forEach(message => {
+        setTimeout(() => message.remove(), 4000);
+    });
+</script>
+{% endif %}
+
+{% block content %}
+{% endblock %}
+</body>
+</html>

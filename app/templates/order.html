@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .container {
+        flex-wrap: wrap;
+        display: flex;
+        justify-content: center;
+    }
+    .card {
+        display: flex;
+        justify-content: space-between;
+        width: 30%;
+        padding: 20px;
+        align-items: center;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        margin: 10px;
+        cursor: pointer;
+    }
+    .left3 {
+        text-align: left;
+    }
+    .right3 {
+        text-align: center;
+    }
+    .modal {
+        background: white;
+        margin: auto;
+        padding: 20px;
+        width: 400px;
+        border-radius: 10px;
+    }
+    form select, form input, form button {
+        margin: 5px;
+        padding: 5px;
+    }
+</style>
+
+<div style="justify-content: center; margin-left: 30px;">
+    <h2>Список заказов</h2>
+    {% if user.is_superuser or user.is_staff %}
+    <button type="button" onclick="modal_add.style.display='flex'">Добавить заказ</button>
+    {% endif %}
+</div>
+
+<div class="container">
+    {% for bookorder in bookorders %}
+    <div class="card" onclick="document.getElementById('modal_edit_{{ bookorder.id }}').style.display='flex'">
+        <div class="left3">
+            <div><strong>Книга:</strong> {{ bookorder.book.name }}</div>
+            <div><strong>Автор:</strong> {{ bookorder.book.author.fio }}</div>
+            <div><strong>Количество:</strong> {{ bookorder.amount }} шт.</div>
+            <div><strong>Статус:</strong> {{ bookorder.order.status.name }}</div>
+            <div><strong>Код заказа:</strong> {{ bookorder.order.code }}</div>
+        </div>
+        <div class="right3">
+            <div><strong>Дата заказа</strong></div>
+            <div>{{ bookorder.order.date_order|date:"d.m.Y" }}</div>
+            <div><strong>Дата доставки</strong></div>
+            <div style="margin-bottom: 10px;">{{ bookorder.order.date_delivery|date:"d.m.Y" }}</div>
+            {% if user.is_superuser %}
+            <div><a href="{% url 'delete_order' bookorder.order.id %}" onclick="event.stopPropagation()">Удалить заказ</a></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования заказа -->
+    <div id="modal_edit_{{ bookorder.id }}" style="display: none; position: fixed; inset: 0; justify-content: center; align-items: center; background: rgba(0,0,0,0.5);">
+        <div class="modal">
+            <form style="display: flex; flex-direction: column; gap: 10px;" method="post" action="{% url 'edit_order' bookorder.id %}">
+                {% csrf_token %}
+                <h2>Редактировать заказ</h2>
+
+                <select name="book">
+                    {% for book in books %}
+                    <option value="{{ book.id }}" {% if bookorder.book.id == book.id %}selected{% endif %}>
+                        {{ book.name }} ({{ book.author.fio }})
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <input value="{{ bookorder.amount }}" name="amount" type="number" min="1" required placeholder="Количество">
+
+                <select name="status">
+                    {% for status in statuses %}
+                    <option value="{{ status.id }}" {% if bookorder.order.status.id == status.id %}selected{% endif %}>
+                        {{ status.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <input value="{{ bookorder.order.code }}" name="code" type="number" required placeholder="Код заказа">
+                <input value="{{ bookorder.order.date_order|date:'Y-m-d' }}" name="date_order" type="date" required>
+                <input value="{{ bookorder.order.date_delivery|date:'Y-m-d' }}" name="date_delivery" type="date" required>
+
+                <button type="submit">Сохранить</button>
+                <button type="button" onclick="document.getElementById('modal_edit_{{ bookorder.id }}').style.display='none'">Отмена</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <p style="text-align: center; width: 100%;">Заказов пока нет</p>
+    {% endfor %}
+</div>
+
+<!-- Модальное окно добавления заказа -->
+<div id="modal_add" style="display: none; position: fixed; inset: 0; justify-content: center;">
+    <div class="modal">
+        <form style="display: flex; flex-direction: column; gap: 10px;" method="post" action="{% url 'add_order' %}">
+            {% csrf_token %}
+            <h2>Добавить заказ</h2>
+
+            <select name="book" required>
+                <option value="">Выберите книгу</option>
+                {% for book in books %}
+                <option value="{{ book.id }}">{{ book.name }} ({{ book.author.fio }}) — {{ book.price }} ₽</option>
+                {% endfor %}
+            </select>
+
+            <input name="amount" type="number" min="1" required placeholder="Количество">
+
+            <select name="status" required>
+                <option value="">Выберите статус</option>
+                {% for status in statuses %}
+                <option value="{{ status.id }}">{{ status.name }}</option>
+                {% endfor %}
+            </select>
+
+            <input name="code" type="number" required placeholder="Код заказа">
+            <input name="date_order" type="date" required>
+            <input name="date_delivery" type="date" required>
+
+            <button type="submit">Добавить заказ</button>
+            <button type="button" onclick="modal_add.style.display='none'">Отмена</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

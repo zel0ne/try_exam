@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .card {
+        display: flex;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+</style>
+<div class="card">
+    <form method="post" action="{% url 'login_' %}">
+        {% csrf_token %}
+        <h2>Вход</h2>
+        <input style="width: 100%; margin-bottom: 5px" placeholder="Введите имя пользователя" name="username" type="text" required>
+        <input style="width: 100%; margin-bottom: 5px" placeholder="Введите пароль" name="password" type="password" required>
+        <div>
+            <button type="submit">Войти</button>
+            <a href="{% url 'home' %}">Войти как гость</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

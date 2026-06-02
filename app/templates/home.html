@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 100%;
+    }
+    .search {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    .card {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 40%;
+        padding: 10px;
+        margin: 10px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        cursor: pointer;
+        gap: 15px;
+    }
+    .left2, .center2, .right2 {
+        display: block;
+    }
+    .center2 {
+        flex: 1;
+    }
+    .modal {
+        background: white;
+        margin: auto;
+        padding: 20px;
+        width: 400px;
+        border-radius: 10px;
+    }
+    form select, form input, form button {
+        margin: 5px;
+        padding: 5px;
+    }
+    .card-info {
+        margin-bottom: 5px;
+    }
+    .preview-img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        margin: 10px auto;
+        display: block;
+        border-radius: 5px;
+    }
+</style>
+
+{% if user.is_superuser or user.is_staff %}
+<div class="search">
+    <form method="get">
+        <h2 style="text-align: center;">Список книг</h2>
+        <input placeholder="Поиск по названию или автору..." value="{{ search }}" name="search" size="40">
+
+        <select name="filter" onchange="this.form.submit()">
+            <option value="">Все жанры</option>
+            {% for genre in genres %}
+            <option value="{{ genre.id }}" {% if filter|slugify == genre.id|slugify %}selected{% endif %}>
+                {{ genre.name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <input type="hidden" value="{{ sort }}" name="sort">
+        <button value="price_asc" name="sort">По возрастанию цены</button>
+        <button value="price_desc" name="sort">По убыванию цены</button>
+        <a href="?">Сброс</a>
+
+        {% if user.is_superuser %}
+        <button type="button" onclick="modal_add.style.display='flex'">Добавить книгу</button>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
+
+<div class="container">
+    {% for book in books %}
+    <div class="card" onclick="document.getElementById('modal_edit_{{ book.id }}').style.display='flex'"
+         {% if book.discount > 15 %}style="background: #2E8B57; color: white"{% endif %}>
+
+        <div class="left2">
+            {% if book.image %}
+            <img width="120" height="120" src="{{ book.image.url }}">
+            {% else %}
+            <img width="120" height="120" src="/media/books/picture.png">
+            {% endif %}
+        </div>
+
+        <div class="center2" style="text-align: left">
+            <div class="card-info"><b>{{ book.name }}</b></div>
+            <div class="card-info">Жанр: {{ book.genre.name }}</div>
+            <div class="card-info">Артикль: {{ book.article }}</div>
+            <div class="card-info">Описание: {{ book.description }}</div>
+            <div class="card-info">Автор: {{ book.author.fio }}</div>
+
+            {% if book.discount == 0 %}
+            <div class="card-info">Цена: {{ book.price }} ₽</div>
+            {% else %}
+            <div class="card-info">
+                Цена: <s style="color: red">{{ book.price }} ₽</s>
+                <strong>{{ book.calculate_discount|floatformat:2 }} ₽</strong>
+                <span style="color: black;">(скидка {{ book.discount }}%)</span>
+            </div>
+            {% endif %}
+
+            <div class="card-info" {% if book.unit_on_stock == 0 %}style="background: blue; text-decoration: line-through; line-through padding: 2px 5px; border-radius: 5px; display: inline-block;"{% endif %}>
+                Количество на складе: {{ book.unit_on_stock }}
+            </div>
+        </div>
+
+        <div class="right2" style="text-align: center">
+            <div>Скидка</div>
+            <div style="margin-bottom: 3px; font-size: 20px;">{{ book.discount }} %</div>
+            {% if user.is_superuser %}
+            <div><a href="{% url 'delete' book.id %}" onclick="event.stopPropagation()">Удалить</a></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div id="modal_edit_{{ book.id }}" style="display: none; position: fixed; inset: 0; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div class="modal">
+            <form style="display: flex; flex-direction: column; gap: 10px;" method="post" enctype="multipart/form-data" action="{% url 'edit' book.id %}">
+                {% csrf_token %}
+                <h2>Редактировать книгу</h2>
+
+                <!-- Превью изображения для редактирования -->
+                <img id="preview_edit_{{ book.id }}" class="preview-img"
+                     src="{% if book.image %}{{ book.image.url }}{% else %}/media/books/picture.png{% endif %}">
+
+                <input type="file" name="image" accept="image/*"
+                       onchange="previewImage(this, 'preview_edit_{{ book.id }}')">
+
+                <input value="{{ book.article }}" name="article" type="text" placeholder="Артикль" required>
+                <input value="{{ book.name }}" name="name" type="text" placeholder="Название" required>
+
+                <select name="genre">
+                    {% for genre in genres %}
+                    <option value="{{ genre.id }}" {% if book.genre.id == genre.id %}selected{% endif %}>
+                        {{ genre.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <input value="{{ book.author.fio }}" name="author" type="text" placeholder="Автор" required>
+                <input value="{{ book.price }}" name="price" type="number" step="0.01" min="0" required>
+                <input value="{{ book.discount }}" name="discount" type="number" step="0.01" min="0" required>
+                <input value="{{ book.description }}" name="description" type="text" placeholder="Описание">
+                <input value="{{ book.unit_on_stock }}" name="unit_on_stock" type="number" required>
+
+                <button type="submit">Сохранить</button>
+                <button type="button" onclick="document.getElementById('modal_edit_{{ book.id }}').style.display='none'">Отмена</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <p style="text-align: center; width: 100%;">Книги не найдены</p>
+    {% endfor %}
+</div>
+
+<!-- Модальное окно добавления книги -->
+<div id="modal_add" style="display: none; position: fixed; inset: 0; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div class="modal">
+        <form style="display: flex; flex-direction: column; gap: 10px;" method="post" action="{% url 'add' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <h2>Добавить книгу</h2>
+
+            <!-- Превью изображения для добавления -->
+            <img id="preview_add" class="preview-img" src="/media/books/picture.png">
+
+            <input type="file" name="image" accept="image/*" onchange="previewImage(this, 'preview_add')">
+            <input placeholder="Артикль (6 символов)" name="article" type="text" maxlength="6" required>
+            <input placeholder="Название книги" name="name" type="text" required>
+
+            <select name="genre">
+                {% for genre in genres %}
+                <option value="{{ genre.id }}">{{ genre.name }}</option>
+                {% endfor %}
+            </select>
+
+            <input placeholder="Автор" name="author" type="text" required>
+            <input placeholder="Цена" name="price" type="number" step="0.01" min="0" required>
+            <input placeholder="Скидка" name="discount" type="number" step="0.01" min="0" value="0">
+            <input placeholder="Описание" name="description" type="text">
+            <input placeholder="Количество на складе" name="unit_on_stock" type="number" required>
+
+            <button type="submit">Добавить</button>
+            <button type="button" onclick="modal_add.style.display='none'">Отмена</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Функция превью изображения
+    function previewImage(input, previewId) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById(previewId);
+                if (preview) {
+                    preview.src = e.target.result;
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Закрытие модальных окон при клике вне их
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}
