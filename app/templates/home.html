@@ -213,12 +213,15 @@
             reader.readAsDataURL(input.files[0]);
         }
     }
-
-    // Закрытие модальных окон при клике вне их
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
+    const searchInput = document.querySelector('input[name="search"]');
+    const cards = document.querySelectorAll('.card');
+    function filterCards() {
+        const query = searchInput.value.toLowerCase();
+        cards.forEach(card => {
+            const text = card.innerText.toLowerCase();
+            card.style.display = text.includes(query) ? 'flex' : 'none';
+        });
     }
+    searchInput.addEventListener('input', filterCards);
 </script>
 {% endblock %}
